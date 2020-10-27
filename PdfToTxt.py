@@ -5,8 +5,37 @@ import os
 from pdf2image import convert_from_path
 import sys
 
-def PdfTotxt(pdfname,outfile='outfile.txt'):
-    PDF_file = pdfname
+import urllib.request
+from bs4 import BeautifulSoup
+
+import random
+from urllib import request
+from bs4 import BeautifulSoup as bs
+import re
+import json
+import retrying
+from user_agents import users
+
+
+def FetchUrlPdf(patent_id=patent_id, headers, proxy_port=1081):
+    url="http://patents.google.com/patent/{}".format(patent_id)
+    request_ = request.Request(url, headers=headers)
+    proxies = {'http': 'http://127.0.0.1:{}'.format(proxy_port),'https':'http://127.0.0.1:{}'.format(proxy_port)}
+    proxy_hander = request.ProxyHandler(proxies)
+    opener = request.build_opener(proxy_hander)
+    response = opener.open(request_, timeout = 60)
+    soup = bs(response, "html.parser")
+    link = soup.find("a", text = "Download PDF").get("href")
+    response.close()
+    return link
+
+def save_pdf(link, patent_id):
+    pdf_file = urllib.request.urlopen(link, timeout = 60)
+    with open("{}.pdf".format(patent_id), "wb") as f:
+        f.write(pdf_file.read())
+
+def PdfTotxt(patent_id,outfile=''):
+    PDF_file = patent_id+'.pdf'
     pages = convert_from_path(PDF_file, 500)   # tranform PDF to JPG
     image_counter = 1
     for page in pages:
@@ -15,7 +44,7 @@ def PdfTotxt(pdfname,outfile='outfile.txt'):
         image_counter = image_counter + 1
     
     filelimit = image_counter
-    outfile = outfile
+    outfile = patent_id+'_total.txt'
     with open(outfile, "w") as f:
         for i in range(1, filelimit):
             filename = "page_"+str(i)+".jpg"
@@ -23,11 +52,13 @@ def PdfTotxt(pdfname,outfile='outfile.txt'):
             text = text.replace('-\n', '')
             f.write(text)
 
-def ExtractIupac(txtname,outfile='outfile.csv'):
+def ExtractIupac(patent_id,outfile='outfile.csv'):
+     txtname=patent_id+'_total.txt'
      rc=re.compile(r'^[aA-Z"0\>\-\\\)/\'’”]')
      rb=re.compile(r'^[0-9][0-9%]')
      ra=re.compile(r'^\w$')
-     f2 = open(ourfile, 'w', encoding='utf-8')   
+     outfile=patent_id+'.csv'
+     f2 = open(outfile, 'w', encoding='utf-8')   
      with open(txtname,encoding='utf-8') as f_origin:
        for line in f_origin.readlines():
           if re.findall(pattern_exampl, line):
@@ -53,8 +84,15 @@ def ExtractIupac(txtname,outfile='outfile.csv'):
 #             line = ''.join(line.split())
 #              print(line)
                f2.write(line)    
-      f2.close()           
+      f2.close()   
+        
+def AutoPatPdf(patent_id,outfile_txt='Example.txt',outfile_csv='Example.csv'):  
+    headers = {"User-Agent":random.choice(users),}
+    link=FetchUrlPdf(patent_id=patent_id, headers, proxy_port=1081)
+    save_pdf(link, patent_id)
+    PdfTotxt(patent_id,outfile=outfile_txt)
+    ExtractIupac(patent_id,outfile=outfile_csv)
 
 if __name__ == "__main__":
     patent_id = "US20200048241A1"
-    Main(patent_id, get_smiles=True, saved_dir='./test/temp', notes="")
+    AutoPatPdf(patent_id,outfile_txt='Example.txt',outfile_csv='Example.csv')

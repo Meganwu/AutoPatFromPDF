@@ -6,8 +6,6 @@ from pdf2image import convert_from_path
 import sys
 
 import urllib.request
-from bs4 import BeautifulSoup
-
 import random
 from urllib import request
 from bs4 import BeautifulSoup as bs
